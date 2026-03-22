@@ -20,9 +20,20 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@langchain/community": "^1.1.24",
+    "@langchain/core": "^1.1.34",
+    "@langchain/openai": "^1.3.0",
+    "@langchain/pinecone": "^1.0.1",
+    "@langchain/textsplitters": "^1.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@pinecone-database/pinecone": "^5.1.2",
+    "@types/pg": "^8.20.0",
+    "chromadb": "^3.4.0",
+    "dotenv": "^17.3.1",
+    "langchain": "^1.2.35",
+    "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
