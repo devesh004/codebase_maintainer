@@ -6,6 +6,7 @@ import { VectorStorageService } from './vector-storage.service';
 
 @Module({
   controllers: [IngestionController],
-  providers: [RepoConnectorService, CodeParserService, VectorStorageService]
+  providers: [RepoConnectorService, CodeParserService, VectorStorageService],
+  exports: [VectorStorageService]
 })
-export class IngestionModule {}
+export class IngestionModule { }
