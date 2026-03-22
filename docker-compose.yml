@@ -2,46 +2,12 @@ services:
   app:
     build: 
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     container_name: codebase_maintainer_app
     ports:
       - "4000:4000"
     env_file:
       - .env
-    environment:
-      - PORT=4000
-      - DB_HOST=postgres_db
-      - DB_PORT=5432
-      - DB_USER_NAME=${DB_USER_NAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - PINECONE_API_KEY=${PINECONE_API_KEY}
-      - PINECONE_INDEX=${PINECONE_INDEX}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - GROQ_MODEL=${GROQ_MODEL}
-    depends_on:
-      postgres_db:
-        condition: service_healthy
     volumes:
       - .:/app
       - /app/node_modules
-
-  postgres_db:
-    image: postgres:15-alpine
-    container_name: codebase_maintainer_db
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: ${DB_USER_NAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-codebase_maintainer_db}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER_NAME:-postgres} -d ${DB_NAME:-codebase_maintainer_db}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:

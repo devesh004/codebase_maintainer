@@ -9,7 +9,7 @@ export const pool = new Pool({
     database: process.env.DB_NAME,
     password: process.env.DB_PASSWORD,
     port: 5432,
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    ssl: { rejectUnauthorized: false },
 });
 
 export const connectToDB = async () => {
