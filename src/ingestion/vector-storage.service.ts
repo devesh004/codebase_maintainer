@@ -7,7 +7,9 @@ import { Document } from '@langchain/core/documents';
 @Injectable()
 export class VectorStorageService implements OnModuleInit {
   private readonly logger = new Logger(VectorStorageService.name);
-  private vectorStore: PineconeStore;
+  private pinecone: Pinecone;
+  private embeddings: PineconeEmbeddings;
+  private indexName: string;
 
   async onModuleInit() {
     this.logger.log('Initializing VectorStorageService with Pinecone...');
@@ -17,33 +19,30 @@ export class VectorStorageService implements OnModuleInit {
         this.logger.warn('PINECONE_API_KEY is not set. Vector ops will fail.');
       }
 
-      // Initialize Pinecone Client
-      const pinecone = new Pinecone({ apiKey });
-      const pineconeIndex = pinecone.Index(process.env.PINECONE_INDEX || 'codebase');
+      this.pinecone = new Pinecone({ apiKey });
+      this.indexName = process.env.PINECONE_INDEX || 'codebase';
 
-      // Setup Pinecone Embeddings using their Inference API
-      const embeddings = new PineconeEmbeddings({
+      this.embeddings = new PineconeEmbeddings({
         apiKey,
-        model: 'multilingual-e5-large', // Pinecone's standard text embedding model
+        model: 'multilingual-e5-large',
       });
 
-      this.vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
-        pineconeIndex,
-      });
-
-      this.logger.log('Pinecone DB initialized successfully.');
+      this.logger.log('Pinecone client initialized successfully.');
     } catch (error) {
-       this.logger.error(`Failed to init Pinecone: ${(error as Error).message}`, (error as Error).stack);
+      this.logger.error(`Failed to init Pinecone: ${(error as Error).message}`, (error as Error).stack);
     }
   }
 
-  async storeDocuments(docs: Document[]): Promise<void> {
-    if (!this.vectorStore) {
-      throw new Error('Vector store not initialized');
-    }
+  private async getVectorStore(namespace?: string): Promise<PineconeStore> {
+    const pineconeIndex = this.pinecone.Index(this.indexName);
+    return PineconeStore.fromExistingIndex(this.embeddings, {
+      pineconeIndex,
+      namespace,
+    });
+  }
 
-    // Filter out documents with empty/whitespace-only content — Pinecone's
-    // embed API crashes with `.map()` on undefined when given empty inputs.
+  async storeDocuments(docs: Document[], namespace?: string): Promise<void> {
+    // Filter out documents with empty/whitespace-only content
     const validDocs = docs.filter(doc => doc.pageContent?.trim().length > 0);
     if (validDocs.length < docs.length) {
       this.logger.warn(`Skipped ${docs.length - validDocs.length} empty/blank documents.`);
@@ -53,31 +52,32 @@ export class VectorStorageService implements OnModuleInit {
       return;
     }
 
-    this.logger.log(`Storing ${validDocs.length} documents into Pinecone...`);
+    const vectorStore = await this.getVectorStore(namespace);
+    const nsLabel = namespace || 'default';
+    this.logger.log(`Storing ${validDocs.length} documents into Pinecone (namespace: "${nsLabel}")...`);
 
-    const BATCH_SIZE = 50; 
+    const BATCH_SIZE = 50;
     const DELAY_MS = 1000;
-    
+
     for (let i = 0; i < validDocs.length; i += BATCH_SIZE) {
       const batch = validDocs.slice(i, i + BATCH_SIZE);
       this.logger.log(`Embedding & Storing batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(validDocs.length / BATCH_SIZE)}...`);
-      
-      await this.vectorStore.addDocuments(batch);
+
+      await vectorStore.addDocuments(batch);
 
       if (i + BATCH_SIZE < validDocs.length) {
         this.logger.log(`Waiting ${DELAY_MS}ms to prevent rate limits...`);
         await new Promise(resolve => setTimeout(resolve, DELAY_MS));
       }
     }
-    
-    this.logger.log('Documents successfully stored in Pinecone DB.');
+
+    this.logger.log(`Documents successfully stored in Pinecone (namespace: "${nsLabel}").`);
   }
 
-  async search(query: string, limit: number = 5): Promise<Document[]> {
-     if (!this.vectorStore) {
-      throw new Error('Vector store not initialized');
-    }
-    this.logger.log(`Searching Pinecone for: "${query}" (limit: ${limit})`);
-    return this.vectorStore.similaritySearch(query, limit);
+  async search(query: string, limit: number = 5, namespace?: string): Promise<Document[]> {
+    const vectorStore = await this.getVectorStore(namespace);
+    const nsLabel = namespace || 'default';
+    this.logger.log(`Searching Pinecone for: "${query}" (limit: ${limit}, namespace: "${nsLabel}")`);
+    return vectorStore.similaritySearch(query, limit);
   }
 }

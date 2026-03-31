@@ -10,11 +10,12 @@ export class ChatController {
     @Body('question') question: string,
     @Body('limit') limit?: number,
     @Body('sessionId') sessionId?: string,
+    @Body('namespace') namespace?: string,
   ) {
     if (!question) {
       throw new BadRequestException('Question is required in the request body.');
     }
 
-    return this.chatService.askQuestion(question, limit || 5, sessionId);
+    return this.chatService.askQuestion(question, limit || 5, sessionId, namespace);
   }
 }

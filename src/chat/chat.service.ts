@@ -26,14 +26,14 @@ export class ChatService {
     });
   }
 
-  async askQuestion(question: string, limit: number = 5, sessionId?: string) {
+  async askQuestion(question: string, limit: number = 5, sessionId?: string, namespace?: string) {
     const activeSessionId = sessionId || crypto.randomUUID();
-    this.logger.log(`Processing question for session ${activeSessionId}: "${question}"`);
+    this.logger.log(`Processing question for session ${activeSessionId} (namespace: "${namespace || 'default'}"): "${question}"`);
 
     try {
-      // 1. Retrieve relevant code chunks from Pinecone
+      // 1. Retrieve relevant code chunks from Pinecone (scoped to namespace)
       this.logger.log(`Fetching top ${limit} relevant chunks...`);
-      const relevantDocs = await this.vectorStorage.search(question, limit);
+      const relevantDocs = await this.vectorStorage.search(question, limit, namespace);
 
       let contextText = '';
       if (relevantDocs && relevantDocs.length > 0) {
@@ -83,6 +83,7 @@ ${contextText || 'No codebase context available.'}`;
       return {
         question,
         answer,
+        namespace: namespace || 'default',
         sourcesUsed,
         sessionId: activeSessionId
       };
