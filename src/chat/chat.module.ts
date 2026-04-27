@@ -7,6 +7,7 @@ import { IngestionModule } from '../ingestion/ingestion.module';
 @Module({
   imports: [IngestionModule],
   controllers: [ChatController],
-  providers: [ChatService, ChatRepository]
+  providers: [ChatService, ChatRepository],
+  exports: [ChatRepository],
 })
 export class ChatModule { }

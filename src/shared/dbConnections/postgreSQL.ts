@@ -17,7 +17,7 @@ export const connectToDB = async () => {
         const client = await pool.connect();
         console.log('Successfully connected to PostgreSQL');
         
-        // Initialize ProjectContext table if it doesn't exist
+        // ProjectContext table
         await client.query(`
             CREATE TABLE IF NOT EXISTS ProjectContext (
                 id SERIAL PRIMARY KEY,
@@ -30,6 +30,37 @@ export const connectToDB = async () => {
             )
         `);
         console.log('ProjectContext table verified/created');
+
+        // ChatMessage table (conversation history)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS ChatMessage (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(255) NOT NULL,
+                role VARCHAR(50) NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON ChatMessage(session_id)
+        `);
+        console.log('ChatMessage table verified/created');
+
+        // AgentTrace table (reasoning traces for agentic/debug sessions)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS AgentTrace (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(255) NOT NULL,
+                mode VARCHAR(50) NOT NULL,
+                plan JSONB,
+                steps JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await client.query(`
+            CREATE INDEX IF NOT EXISTS idx_agent_trace_session_id ON AgentTrace(session_id)
+        `);
+        console.log('AgentTrace table verified/created');
         
         client.release();
     } catch (error) {

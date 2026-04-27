@@ -97,23 +97,37 @@ ${contextText || 'No codebase context available.'}`;
       await this.chatRepo.saveMessage(activeSessionId, 'user', question);
       await this.chatRepo.saveMessage(activeSessionId, 'assistant', answer);
 
-      // 7. Extract unique sources for the response metadata
-      const sourcesUsed = Array.from(
-        new Set(relevantDocs.map(doc => doc.metadata?.source))
-      ).map(source => {
-        // Extract just the filename for clean UI display
-        const fileName = source ? source.split(/[/\\]/).pop() || source : 'Unknown file';
-        // Build a relative-looking path (last 2 segments) for extra context
-        const parts = source ? source.split(/[/\\]/) : [];
-        const relativePath = parts.length > 1
-          ? parts.slice(-2).join('/')
-          : fileName;
-        return {
-          file: source,          // full path (for debugging / deep linking)
-          displayName: fileName, // e.g. "helper.ts"
-          relativePath,          // e.g. "utils/helper.ts"
-        };
-      });
+      // 7. Extract unique sources with code snippets for grounded responses
+      const seenFiles = new Set<string>();
+      const sourcesUsed = relevantDocs
+        .filter(doc => {
+          const src = doc.metadata?.source;
+          if (!src || seenFiles.has(src)) return false;
+          seenFiles.add(src);
+          return true;
+        })
+        .map(doc => {
+          const source = doc.metadata?.source as string;
+          const parts = source.split(/[/\\]/);
+          const fileName = parts.pop() || source;
+          const relativePath = parts.length > 0
+            ? `${parts.slice(-2).join('/')}/${fileName}`
+            : fileName;
+          const ext = fileName.split('.').pop()?.toLowerCase() || '';
+          const langMap: Record<string, string> = {
+            ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
+            py: 'python', go: 'go', java: 'java', rb: 'ruby', rs: 'rust',
+            cpp: 'cpp', c: 'c', cs: 'csharp', md: 'markdown', json: 'json',
+            yaml: 'yaml', yml: 'yaml', sh: 'bash', sql: 'sql', html: 'html', css: 'css',
+          };
+          return {
+            file: source,
+            displayName: fileName,
+            relativePath,
+            snippet: doc.pageContent.substring(0, 500).trim(),
+            language: langMap[ext] || 'plaintext',
+          };
+        });
 
       return {
         question,
